@@ -39,7 +39,7 @@ const LinkHandler: React.FC = () => {
           ]
           for (var i in priority) {
             // no Array.find in IE
-            if (priority[i] != 0) {
+            if (priority[i] !== 0) {
               return priority[i]
             }
           }
