@@ -10,17 +10,63 @@ const LinkHandler: React.FC = () => {
   const onProcess = async (link: string) => {
     const filteredVideoId = link.match(/\d+-\d+-A/g) || ''
     console.log(`${ARTE_API}${lang}/${filteredVideoId}`)
-    const rawResponse = await fetch(`${ARTE_API}/${lang}/${filteredVideoId}`, {
-      method: 'GET',
-      redirect: 'follow',
-    })
-    console.log(await rawResponse)
+    var apiUrl =
+      'https://api.arte.tv/api/player/v1/config/fr/' + filteredVideoId
+    var xobj = new XMLHttpRequest()
+    xobj.overrideMimeType('application/json') // no .responseType = "json" in IE
+    xobj.open('GET', apiUrl, true)
+    xobj.onload = function () {
+      function error(msg: string, cName: string) {
+        console.error(msg, cName)
+      }
+      var jsonResponse = JSON.parse(xobj.responseText)
+      var videoJsonPlayer = jsonResponse.videoJsonPlayer
+      var VSR = videoJsonPlayer.VSR
+      if (VSR === undefined) {
+        console.log(error('Error: API querry failed to ' + apiUrl, 'err'))
+        return
+      }
 
-    const string = await rawResponse.text()
-    const json = string === '' ? {} : JSON.parse(string)
-    console.log(json)
+      var dataRaw = Object.keys(VSR)
+        .map(function (k) {
+          return VSR[k]
+        })
+        .sort(function (l, r) {
+          var priority = [
+            r.bitrate - l.bitrate,
+            r.mimeType.localeCompare(l.mimeType),
+            r.versionShortLibelle.localeCompare(l.versionShortLibelle),
+          ]
+          for (var i in priority) {
+            // no Array.find in IE
+            if (priority[i] != 0) {
+              return priority[i]
+            }
+          }
+          return 0
+        })
 
-    return json
+      var maxBitrate = Math.max.apply(
+        null,
+        dataRaw.map(function (e) {
+          return e.bitrate
+        })
+      )
+      var data = dataRaw
+        .filter(function (r) {
+          return r.bitrate === maxBitrate
+        })
+        .map(function (r) {
+          return {
+            URL: r.url,
+            Format: r.mediaType,
+            Version: r.versionLibelle,
+            Bitrate: r.bitrate,
+          }
+        })
+      console.log(data)
+    }
+    xobj.send(null)
   }
   return (
     <Container>
